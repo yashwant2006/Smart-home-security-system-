@@ -1,0 +1,61 @@
+import RPi.GPIO as GPIO
+import BlynkLib
+import time
+
+# Replace with your Blynk Auth Token
+BLYNK_AUTH = 'YourAuthTokenHere'
+
+# Init Blynk
+blynk = BlynkLib.Blynk(BLYNK_AUTH)
+
+# GPIO setup
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+
+# Servo Motor Setup
+SERVO_PIN = 18
+GPIO.setup(SERVO_PIN, GPIO.OUT)
+servo_pwm = GPIO.PWM(SERVO_PIN, 50)  # 50Hz
+servo_pwm.start(0)
+
+# DC Motor Setup
+IN1 = 23
+IN2 = 24
+GPIO.setup(IN1, GPIO.OUT)
+GPIO.setup(IN2, GPIO.OUT)
+
+# Control Servo (V0: Button)
+@blynk.VIRTUAL_WRITE(0)
+def servo_control(value):
+    val = int(value[0])
+    if val == 1:
+        print("Turning Servo to 90°")
+        servo_pwm.ChangeDutyCycle(7.5)  # 90 degrees
+    else:
+        print("Turning Servo to 0°")
+        servo_pwm.ChangeDutyCycle(2.5)  # 0 degrees
+    time.sleep(0.5)
+    servo_pwm.ChangeDutyCycle(0)
+
+# Control DC Motor (V1: Button)
+@blynk.VIRTUAL_WRITE(1)
+def dc_motor_control(value):
+    val = int(value[0])
+    if val == 1:
+        print("DC Motor ON - Forward")
+        GPIO.output(IN1, GPIO.HIGH)
+        GPIO.output(IN2, GPIO.LOW)
+    else:
+        print("DC Motor OFF")
+        GPIO.output(IN1, GPIO.LOW)
+        GPIO.output(IN2, GPIO.LOW)
+
+try:
+    print("Starting Blynk connection...")
+    while True:
+        blynk.run()
+
+except KeyboardInterrupt:
+    print("\nExiting program...")
+    GPIO.cleanup()
+    servo_pwm.stop()
