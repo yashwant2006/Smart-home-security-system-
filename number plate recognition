@@ -1,0 +1,57 @@
+import cv2
+import easyocr
+import RPi.GPIO as GPIO
+import time
+
+# GPIO setup
+IN1 = 23
+IN2 = 24
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(IN1, GPIO.OUT)
+GPIO.setup(IN2, GPIO.OUT)
+
+# EasyOCR reader
+reader = easyocr.Reader(['en'])
+
+# List of authorized plates
+AUTHORIZED_PLATES = ['KA01AB1234', 'TN09XY5678']
+
+# Function to activate motor
+def activate_motor():
+    print("Authorized plate detected! Activating motor...")
+    GPIO.output(IN1, GPIO.HIGH)
+    GPIO.output(IN2, GPIO.LOW)
+    time.sleep(2)
+    GPIO.output(IN1, GPIO.LOW)
+    GPIO.output(IN2, GPIO.LOW)
+
+# Start camera
+cap = cv2.VideoCapture(0)
+
+try:
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            continue
+
+        # Optional: Resize frame to improve speed
+        small_frame = cv2.resize(frame, (640, 480))
+
+        # Detect text
+        result = reader.readtext(small_frame)
+
+        for detection in result:
+            text = detection[1].upper().replace(" ", "")
+            print("Detected:", text)
+            if text in AUTHORIZED_PLATES:
+                activate_motor()
+                time.sleep(5)  # wait before next detection
+
+        cv2.imshow("Frame", small_frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+finally:
+    cap.release()
+    cv2.destroyAllWindows()
+    GPIO.cleanup()
